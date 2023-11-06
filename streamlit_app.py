@@ -1,7 +1,7 @@
 import streamlit as st
 import tensorflow as tf
 
-def generate():
+def generate(content_img, style_img, epc, itr):
     import os
     import tensorflow as tf
     # Load compressed models from tensorflow_hub
@@ -26,12 +26,8 @@ def generate():
             tensor = tensor[0]
         return PIL.Image.fromarray(tensor)
 
-    content_path = tf.keras.utils.get_file('YellowLabradorLooking_new.jpg', 'https://storage.googleapis.com/download.tensorflow.org/example_images/YellowLabradorLooking_new.jpg')
-    style_path = tf.keras.utils.get_file('kandinsky5.jpg','https://storage.googleapis.com/download.tensorflow.org/example_images/Vassily_Kandinsky%2C_1913_-_Composition_7.jpg')
-
-    def load_img(path_to_img):
+    def load_img(img):
         max_dim = 512
-        img = tf.io.read_file(path_to_img)
         img = tf.image.decode_image(img, channels=3)
         img = tf.image.convert_image_dtype(img, tf.float32)
 
@@ -45,22 +41,9 @@ def generate():
         img = img[tf.newaxis, :]
         return img
 
-    def imshow(image, title=None):
-        if len(image.shape) > 3:
-            image = tf.squeeze(image, axis=0)
+    content_image = load_img(content_img)
+    style_image = load_img(style_img)
 
-        plt.imshow(image)
-        if title:
-            plt.title(title)
-
-    content_image = load_img(content_path)
-    style_image = load_img(style_path)
-
-    plt.subplot(1, 2, 1)
-    imshow(content_image, 'Content Image')
-
-    plt.subplot(1, 2, 2)
-    imshow(style_image, 'Style Image')
 
     x = tf.keras.applications.vgg19.preprocess_input(content_image*255)
     x = tf.image.resize(x, (224, 224))
@@ -181,18 +164,13 @@ def generate():
     import time
     start = time.time()
 
-    epochs = 10
-    steps_per_epoch = 100
-
     step = 0
-    for n in range(epochs):
-        for m in range(steps_per_epoch):
+    for n in range(epc):
+        for m in range(itr):
             step += 1
             train_step(image)
             print(".", end='', flush=True)
-        display.clear_output(wait=True)
-        display.display(tensor_to_image(image))
-        print("Train step: {}".format(step))
+        out = st.image(tensor_to_image(image), caption=("Train step: {}".format(step)))
 
     end = time.time()
     print("Total time: {:.1f}".format(end-start))
@@ -230,29 +208,26 @@ def generate():
     import time
     start = time.time()
 
-    epochs = 10
-    steps_per_epoch = 100
-
     step = 0
-    for n in range(epochs):
-        for m in range(steps_per_epoch):
+    for n in range(epc):
+        for m in range(itr):
             step += 1
             train_step(image)
             print(".", end='', flush=True)
-        display.clear_output(wait=True)
-        display.display(tensor_to_image(image))
-        print("Train step: {}".format(step))
+        out = st.image(tensor_to_image(image), caption=("Train step: {}".format(step)))
 
     end = time.time()
-    print("Total time: {:.1f}".format(end-start))
+    st.write("Total time: {:.1f}".format(end-start))
 
-    st.image(tensor_to_image(image), caption="generated image")
+    out = st.image(tensor_to_image(image), caption="generated image")
     
 
     
 with st.sidebar:
     st.title("Style Transfer")
     st.info("This application is originally developed from Tensorflow's Neural Style Transfer Tutorial")
+    epc = st.slider('Number of epochs', 0, 10, 1)
+    itr = st.slider('Number of iterations per epoch', 0, 100, 5)
 
 col1, col2 = st.columns(2)
 
@@ -266,7 +241,7 @@ with col2:
         st.image(style_img, caption='Style Image')
 
 if content_img and style_img:
-    st.button('Generate!', on_click=generate)
+    st.button('Generate!', on_click=generate, args=[content_img, style_img, epc, itr])
 
 
 

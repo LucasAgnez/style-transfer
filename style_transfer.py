@@ -1,5 +1,3 @@
-import os
-import tensorflow as tf
 import streamlit as st
 os.environ['TFHUB_MODEL_LOAD_FORMAT'] = 'COMPRESSED'
 import IPython.display as display
@@ -142,6 +140,8 @@ def total_variation_loss(image):
   return tf.reduce_sum(tf.abs(x_deltas)) + tf.reduce_sum(tf.abs(y_deltas))
 
 def generate_img():
+    import tensorflow as tf
+
     load_imgs()
 
     import tensorflow_hub as hub
@@ -225,6 +225,14 @@ def generate_img():
 def main():
     st.title("Style Transfer")
     st.sidebar.title("Images")
+
+    content_img = st.sidebar.file_uploader("Choose a base image", type=['png', 'jpg', 'jpeg'])
+    if content_img:
+        st.sidebar.image(content_img, caption='Base Image')
+
+    style_img = st.sidebar.file_uploader("Choose a syle image", type=['png', 'jpg', 'jpeg'])
+    if style_img:
+        st.sidebar.image(style_img, caption='Style Image')
 
 
 

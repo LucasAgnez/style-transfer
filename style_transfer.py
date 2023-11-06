@@ -1,11 +1,6 @@
 import streamlit as st
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-mpl.rcParams['figure.figsize'] = (12, 12)
-mpl.rcParams['axes.grid'] = False
 import numpy as np
 import PIL.Image
-import time
 import functools
 
 def tensor_to_image(tensor):
@@ -32,13 +27,6 @@ def load_img(path_to_img):
   img = img[tf.newaxis, :]
   return img
 
-def imshow(image, title=None):
-  if len(image.shape) > 3:
-    image = tf.squeeze(image, axis=0)
-
-  plt.imshow(image)
-  if title:
-    plt.title(title)
 
 def load_imgs():
     content_path = tf.keras.utils.get_file('YellowLabradorLooking_new.jpg', 'https://storage.googleapis.com/download.tensorflow.org/example_images/YellowLabradorLooking_new.jpg')
@@ -46,12 +34,6 @@ def load_imgs():
 
     content_image = load_img(content_path)
     style_image = load_img(style_path)
-
-    plt.subplot(1, 2, 1)
-    imshow(content_image, 'Content Image')
-
-    plt.subplot(1, 2, 2)
-    imshow(style_image, 'Style Image')
 
 def vgg_layers(layer_names):
   """ Creates a VGG model that returns a list of intermediate output values."""

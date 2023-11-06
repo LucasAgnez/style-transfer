@@ -91,7 +91,7 @@ def total_variation_loss(image):
 def generate_img():
     import tensorflow as tf
     os.environ['TFHUB_MODEL_LOAD_FORMAT'] = 'COMPRESSED'
-    
+
     class StyleContentModel(tf.keras.models.Model):
         def __init__(self, style_layers, content_layers):
             super(StyleContentModel, self).__init__()
@@ -120,7 +120,7 @@ def generate_img():
                         for style_name, value
                         in zip(self.style_layers, style_outputs)}
 
-        return {'content': content_dict, 'style': style_dict}
+            return {'content': content_dict, 'style': style_dict}
     
 
     load_imgs()

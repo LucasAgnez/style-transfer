@@ -1,5 +1,4 @@
 import streamlit as st
-os.environ['TFHUB_MODEL_LOAD_FORMAT'] = 'COMPRESSED'
 import IPython.display as display
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -141,6 +140,7 @@ def total_variation_loss(image):
 
 def generate_img():
     import tensorflow as tf
+    os.environ['TFHUB_MODEL_LOAD_FORMAT'] = 'COMPRESSED'
 
     load_imgs()
 

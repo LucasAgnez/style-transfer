@@ -52,36 +52,6 @@ def gram_matrix(input_tensor):
   num_locations = tf.cast(input_shape[1]*input_shape[2], tf.float32)
   return result/(num_locations)
 
-class StyleContentModel(tf.keras.models.Model):
-  def __init__(self, style_layers, content_layers):
-    super(StyleContentModel, self).__init__()
-    self.vgg = vgg_layers(style_layers + content_layers)
-    self.style_layers = style_layers
-    self.content_layers = content_layers
-    self.num_style_layers = len(style_layers)
-    self.vgg.trainable = False
-
-  def call(self, inputs):
-    "Expects float input in [0,1]"
-    inputs = inputs*255.0
-    preprocessed_input = tf.keras.applications.vgg19.preprocess_input(inputs)
-    outputs = self.vgg(preprocessed_input)
-    style_outputs, content_outputs = (outputs[:self.num_style_layers],
-                                      outputs[self.num_style_layers:])
-
-    style_outputs = [gram_matrix(style_output)
-                     for style_output in style_outputs]
-
-    content_dict = {content_name: value
-                    for content_name, value
-                    in zip(self.content_layers, content_outputs)}
-
-    style_dict = {style_name: value
-                  for style_name, value
-                  in zip(self.style_layers, style_outputs)}
-
-    return {'content': content_dict, 'style': style_dict}
-
 
 def clip_0_1(image):
   return tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=1.0)
@@ -118,14 +88,44 @@ def high_pass_x_y(image):
 def total_variation_loss(image):
   x_deltas, y_deltas = high_pass_x_y(image)
   return tf.reduce_sum(tf.abs(x_deltas)) + tf.reduce_sum(tf.abs(y_deltas))
-
 def generate_img():
     import tensorflow as tf
     os.environ['TFHUB_MODEL_LOAD_FORMAT'] = 'COMPRESSED'
+    
+    class StyleContentModel(tf.keras.models.Model):
+        def __init__(self, style_layers, content_layers):
+            super(StyleContentModel, self).__init__()
+            self.vgg = vgg_layers(style_layers + content_layers)
+            self.style_layers = style_layers
+            self.content_layers = content_layers
+            self.num_style_layers = len(style_layers)
+            self.vgg.trainable = False
+
+        def call(self, inputs):
+            "Expects float input in [0,1]"
+            inputs = inputs*255.0
+            preprocessed_input = tf.keras.applications.vgg19.preprocess_input(inputs)
+            outputs = self.vgg(preprocessed_input)
+            style_outputs, content_outputs = (outputs[:self.num_style_layers],
+                                            outputs[self.num_style_layers:])
+
+            style_outputs = [gram_matrix(style_output)
+                            for style_output in style_outputs]
+
+            content_dict = {content_name: value
+                            for content_name, value
+                            in zip(self.content_layers, content_outputs)}
+
+            style_dict = {style_name: value
+                        for style_name, value
+                        in zip(self.style_layers, style_outputs)}
+
+        return {'content': content_dict, 'style': style_dict}
+    
 
     load_imgs()
 
-    import tensorflow_hub as hub
+    #import tensorflow_hub as hub
     #hub_model = hub.load('https://tfhub.dev/google/magenta/arbitrary-image-stylization-v1-256/2')
     #stylized_image = hub_model(tf.constant(content_image), tf.constant(style_image))[0]
     #tensor_to_image(stylized_image)

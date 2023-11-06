@@ -3,9 +3,6 @@ import streamlit as st
 with st.sidebar:
     st.title("Styele Transfer")
     st.info("This application is originally developed from Tensorflow's Neural Style Transfer Tutorial")
-    st.file_uploader("Choose a base image", type=['png', 'jpg', 'jpeg'])
-
-
 
 content_img = st.file_uploader("Choose a content image", type=['png', 'jpg', 'jpeg'])
 if content_img:

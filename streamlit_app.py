@@ -1,5 +1,8 @@
 import streamlit as st
 
+def generate():
+    st.write("Hello")
+    
 with st.sidebar:
     st.title("Style Transfer")
     st.info("This application is originally developed from Tensorflow's Neural Style Transfer Tutorial")
@@ -14,3 +17,6 @@ with col2:
     style_img = st.file_uploader("Choose a syle image", type=['png', 'jpg', 'jpeg'])
     if style_img:
         st.image(style_img, caption='Style Image')
+
+st.button("Generate!", type="primary", disabled=!(content_img && style_img), on_click=generate())
+

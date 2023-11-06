@@ -7,12 +7,10 @@ with st.sidebar:
 
 
 
-with col1:
-    content_img = st.file_uploader("Choose a content image", type=['png', 'jpg', 'jpeg'])
-    if content_img:
-        st.image(content_img, caption='Content Image')
-
-with col2:
-    style_img = st.file_uploader("Choose a syle image", type=['png', 'jpg', 'jpeg'])
-    if style_img:
-        st.image(style_img, caption='Style Image')
+content_img = st.file_uploader("Choose a content image", type=['png', 'jpg', 'jpeg'])
+if content_img:
+    st.image(content_img, caption='Content Image')
+    
+style_img = st.file_uploader("Choose a syle image", type=['png', 'jpg', 'jpeg'])
+if style_img:
+    st.image(style_img, caption='Style Image')

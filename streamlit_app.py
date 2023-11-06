@@ -1,7 +1,7 @@
 import streamlit as st
 
 with st.sidebar:
-    st.title("Styele Transfer")
+    st.title("Style Transfer")
     st.info("This application is originally developed from Tensorflow's Neural Style Transfer Tutorial")
 
 col1, col2 = st.columns(2)

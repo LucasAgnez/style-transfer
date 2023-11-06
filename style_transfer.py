@@ -1,8 +1,17 @@
-import streamlit as st
+import os
 import tensorflow as tf
+# Load compressed models from tensorflow_hub
 os.environ['TFHUB_MODEL_LOAD_FORMAT'] = 'COMPRESSED'
+import IPython.display as display
+
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+mpl.rcParams['figure.figsize'] = (12, 12)
+mpl.rcParams['axes.grid'] = False
+
 import numpy as np
 import PIL.Image
+import time
 import functools
 
 def tensor_to_image(tensor):
@@ -12,6 +21,9 @@ def tensor_to_image(tensor):
     assert tensor.shape[0] == 1
     tensor = tensor[0]
   return PIL.Image.fromarray(tensor)
+
+content_path = tf.keras.utils.get_file('YellowLabradorLooking_new.jpg', 'https://storage.googleapis.com/download.tensorflow.org/example_images/YellowLabradorLooking_new.jpg')
+style_path = tf.keras.utils.get_file('kandinsky5.jpg','https://storage.googleapis.com/download.tensorflow.org/example_images/Vassily_Kandinsky%2C_1913_-_Composition_7.jpg')
 
 def load_img(path_to_img):
   max_dim = 512
@@ -29,13 +41,48 @@ def load_img(path_to_img):
   img = img[tf.newaxis, :]
   return img
 
+def imshow(image, title=None):
+  if len(image.shape) > 3:
+    image = tf.squeeze(image, axis=0)
 
-def load_imgs():
-    content_path = tf.keras.utils.get_file('YellowLabradorLooking_new.jpg', 'https://storage.googleapis.com/download.tensorflow.org/example_images/YellowLabradorLooking_new.jpg')
-    style_path = tf.keras.utils.get_file('kandinsky5.jpg','https://storage.googleapis.com/download.tensorflow.org/example_images/Vassily_Kandinsky%2C_1913_-_Composition_7.jpg')
+  plt.imshow(image)
+  if title:
+    plt.title(title)
 
-    content_image = load_img(content_path)
-    style_image = load_img(style_path)
+content_image = load_img(content_path)
+style_image = load_img(style_path)
+
+plt.subplot(1, 2, 1)
+imshow(content_image, 'Content Image')
+
+plt.subplot(1, 2, 2)
+imshow(style_image, 'Style Image')
+
+x = tf.keras.applications.vgg19.preprocess_input(content_image*255)
+x = tf.image.resize(x, (224, 224))
+vgg = tf.keras.applications.VGG19(include_top=True, weights='imagenet')
+prediction_probabilities = vgg(x)
+prediction_probabilities.shape
+
+predicted_top_5 = tf.keras.applications.vgg19.decode_predictions(prediction_probabilities.numpy())[0]
+[(class_name, prob) for (number, class_name, prob) in predicted_top_5]
+
+vgg = tf.keras.applications.VGG19(include_top=False, weights='imagenet')
+
+print()
+for layer in vgg.layers:
+  print(layer.name)
+
+content_layers = ['block5_conv2']
+
+style_layers = ['block1_conv1',
+                'block2_conv1',
+                'block3_conv1',
+                'block4_conv1',
+                'block5_conv1']
+
+num_content_layers = len(content_layers)
+num_style_layers = len(style_layers)
 
 def vgg_layers(layer_names):
   """ Creates a VGG model that returns a list of intermediate output values."""
@@ -47,6 +94,18 @@ def vgg_layers(layer_names):
 
   model = tf.keras.Model([vgg.input], outputs)
   return model
+
+style_extractor = vgg_layers(style_layers)
+style_outputs = style_extractor(style_image*255)
+
+#Look at the statistics of each layer's output
+for name, output in zip(style_layers, style_outputs):
+  print(name)
+  print("  shape: ", output.numpy().shape)
+  print("  min: ", output.numpy().min())
+  print("  max: ", output.numpy().max())
+  print("  mean: ", output.numpy().mean())
+  print()
 
 def gram_matrix(input_tensor):
   result = tf.linalg.einsum('bijc,bijd->bcd', input_tensor, input_tensor)
@@ -84,9 +143,39 @@ class StyleContentModel(tf.keras.models.Model):
 
     return {'content': content_dict, 'style': style_dict}
 
+extractor = StyleContentModel(style_layers, content_layers)
+
+results = extractor(tf.constant(content_image))
+
+print('Styles:')
+for name, output in sorted(results['style'].items()):
+  print("  ", name)
+  print("    shape: ", output.numpy().shape)
+  print("    min: ", output.numpy().min())
+  print("    max: ", output.numpy().max())
+  print("    mean: ", output.numpy().mean())
+  print()
+
+print("Contents:")
+for name, output in sorted(results['content'].items()):
+  print("  ", name)
+  print("    shape: ", output.numpy().shape)
+  print("    min: ", output.numpy().min())
+  print("    max: ", output.numpy().max())
+  print("    mean: ", output.numpy().mean())
+
+style_targets = extractor(style_image)['style']
+content_targets = extractor(content_image)['content']
+
+image = tf.Variable(content_image)
 
 def clip_0_1(image):
   return tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=1.0)
+
+opt = tf.keras.optimizers.Adam(learning_rate=0.02, beta_1=0.99, epsilon=1e-1)
+
+style_weight=1e-2
+content_weight=1e4
 
 def style_content_loss(outputs):
     style_outputs = outputs['style']
@@ -111,6 +200,25 @@ def train_step(image):
   opt.apply_gradients([(grad, image)])
   image.assign(clip_0_1(image))
 
+import time
+start = time.time()
+
+epochs = 10
+steps_per_epoch = 100
+
+step = 0
+for n in range(epochs):
+  for m in range(steps_per_epoch):
+    step += 1
+    train_step(image)
+    print(".", end='', flush=True)
+  display.clear_output(wait=True)
+  display.display(tensor_to_image(image))
+  print("Train step: {}".format(step))
+
+end = time.time()
+print("Total time: {:.1f}".format(end-start))
+
 def high_pass_x_y(image):
   x_var = image[:, :, 1:, :] - image[:, :, :-1, :]
   y_var = image[:, 1:, :, :] - image[:, :-1, :, :]
@@ -121,85 +229,51 @@ def total_variation_loss(image):
   x_deltas, y_deltas = high_pass_x_y(image)
   return tf.reduce_sum(tf.abs(x_deltas)) + tf.reduce_sum(tf.abs(y_deltas))
 
-def generate_img():
-    load_imgs()
+total_variation_loss(image).numpy()
 
-    #import tensorflow_hub as hub
-    #hub_model = hub.load('https://tfhub.dev/google/magenta/arbitrary-image-stylization-v1-256/2')
-    #stylized_image = hub_model(tf.constant(content_image), tf.constant(style_image))[0]
-    #tensor_to_image(stylized_image)
+tf.image.total_variation(image).numpy()
 
-    x = tf.keras.applications.vgg19.preprocess_input(content_image*255)
-    x = tf.image.resize(x, (224, 224))
-    vgg = tf.keras.applications.VGG19(include_top=True, weights='imagenet')
-    prediction_probabilities = vgg(x)
-    prediction_probabilities.shape
+total_variation_weight=30
 
-    predicted_top_5 = tf.keras.applications.vgg19.decode_predictions(prediction_probabilities.numpy())[0]
-    [(class_name, prob) for (number, class_name, prob) in predicted_top_5]
+@tf.function()
+def train_step(image):
+  with tf.GradientTape() as tape:
+    outputs = extractor(image)
+    loss = style_content_loss(outputs)
+    loss += total_variation_weight*tf.image.total_variation(image)
 
-    vgg = tf.keras.applications.VGG19(include_top=False, weights='imagenet')
+  grad = tape.gradient(loss, image)
+  opt.apply_gradients([(grad, image)])
+  image.assign(clip_0_1(image))
 
-    content_layers = ['block5_conv2']
+opt = tf.keras.optimizers.Adam(learning_rate=0.02, beta_1=0.99, epsilon=1e-1)
+image = tf.Variable(content_image)
 
-    style_layers = ['block1_conv1',
-                    'block2_conv1',
-                    'block3_conv1',
-                    'block4_conv1',
-                    'block5_conv1']
+import time
+start = time.time()
 
-    num_content_layers = len(content_layers)
-    num_style_layers = len(style_layers)
+epochs = 10
+steps_per_epoch = 100
 
+step = 0
+for n in range(epochs):
+  for m in range(steps_per_epoch):
+    step += 1
+    train_step(image)
+    print(".", end='', flush=True)
+  display.clear_output(wait=True)
+  display.display(tensor_to_image(image))
+  print("Train step: {}".format(step))
 
-    style_extractor = vgg_layers(style_layers)
-    style_outputs = style_extractor(style_image*255)
-    extractor = StyleContentModel(style_layers, content_layers)
+end = time.time()
+print("Total time: {:.1f}".format(end-start))
 
-    results = extractor(tf.constant(content_image))
+file_name = 'stylized-image.png'
+tensor_to_image(image).save(file_name)
 
-
-    style_targets = extractor(style_image)['style']
-    content_targets = extractor(content_image)['content']
-
-    image = tf.Variable(content_image)
-    opt = tf.keras.optimizers.Adam(learning_rate=0.02, beta_1=0.99, epsilon=1e-1)
-    style_weight=1e-2
-    content_weight=1e4
-
-    epochs = 10
-    steps_per_epoch = 100
-    for n in range(epochs):
-        for m in range(steps_per_epoch):
-            train_step(image)
-
-    total_variation_loss(image).numpy()
-
-    tf.image.total_variation(image).numpy()
-
-    total_variation_weight=30
-
-    @tf.function()
-    def train_step(image):
-        with tf.GradientTape() as tape:
-            outputs = extractor(image)
-            loss = style_content_loss(outputs)
-            loss += total_variation_weight*tf.image.total_variation(image)
-
-        grad = tape.gradient(loss, image)
-        opt.apply_gradients([(grad, image)])
-        image.assign(clip_0_1(image))
-
-    opt = tf.keras.optimizers.Adam(learning_rate=0.02, beta_1=0.99, epsilon=1e-1)
-    image = tf.Variable(content_image)
-
-    epochs = 10
-    steps_per_epoch = 100
-    for n in range(epochs):
-        for m in range(steps_per_epoch):
-            train_step(image)
-
-    img_out = tensor_to_image(image).save(file_name)
-    return img_out
-
-
+try:
+  from google.colab import files
+except ImportError:
+   pass
+else:
+  files.download(file_name)

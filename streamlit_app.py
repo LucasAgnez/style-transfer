@@ -18,5 +18,6 @@ with col2:
     if style_img:
         st.image(style_img, caption='Style Image')
 
+st.button("Generate!", type="primary")
 st.button("Generate!", type="primary", disabled=!(content_img && style_img), on_click=generate())
 

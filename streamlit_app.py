@@ -1,6 +1,9 @@
 import streamlit as st
 import tensorflow as tf
 
+
+
+
 def generate(content_img, style_img, epc, itr):
     import os
     import tensorflow as tf
@@ -18,6 +21,9 @@ def generate(content_img, style_img, epc, itr):
     import time
     import functools
 
+    imgs = st.empty()
+    imgs.image(content_img)
+    
     def tensor_to_image(tensor):
         tensor = tensor*255
         tensor = np.array(tensor, dtype=np.uint8)
@@ -28,6 +34,7 @@ def generate(content_img, style_img, epc, itr):
 
     def load_img(img):
         max_dim = 512
+        img = img.read()
         img = tf.image.decode_image(img, channels=3)
         img = tf.image.convert_image_dtype(img, tf.float32)
 
@@ -49,10 +56,8 @@ def generate(content_img, style_img, epc, itr):
     x = tf.image.resize(x, (224, 224))
     vgg = tf.keras.applications.VGG19(include_top=True, weights='imagenet')
     prediction_probabilities = vgg(x)
-    prediction_probabilities.shape
 
     predicted_top_5 = tf.keras.applications.vgg19.decode_predictions(prediction_probabilities.numpy())[0]
-    [(class_name, prob) for (number, class_name, prob) in predicted_top_5]
 
     vgg = tf.keras.applications.VGG19(include_top=False, weights='imagenet')
 
@@ -151,43 +156,11 @@ def generate(content_img, style_img, epc, itr):
         loss = style_loss + content_loss
         return loss
 
-    @tf.function()
-    def train_step(image):
-        with tf.GradientTape() as tape:
-            outputs = extractor(image)
-            loss = style_content_loss(outputs)
-
-        grad = tape.gradient(loss, image)
-        opt.apply_gradients([(grad, image)])
-        image.assign(clip_0_1(image))
-
-    import time
-    start = time.time()
-
-    step = 0
-    for n in range(epc):
-        for m in range(itr):
-            step += 1
-            train_step(image)
-            print(".", end='', flush=True)
-        out = st.image(tensor_to_image(image), caption=("Train step: {}".format(step)))
-
-    end = time.time()
-    print("Total time: {:.1f}".format(end-start))
-
     def high_pass_x_y(image):
         x_var = image[:, :, 1:, :] - image[:, :, :-1, :]
         y_var = image[:, 1:, :, :] - image[:, :-1, :, :]
 
         return x_var, y_var
-
-    def total_variation_loss(image):
-        x_deltas, y_deltas = high_pass_x_y(image)
-        return tf.reduce_sum(tf.abs(x_deltas)) + tf.reduce_sum(tf.abs(y_deltas))
-
-    total_variation_loss(image).numpy()
-
-    tf.image.total_variation(image).numpy()
 
     total_variation_weight=30
 
@@ -209,20 +182,20 @@ def generate(content_img, style_img, epc, itr):
     start = time.time()
 
     step = 0
+    
     for n in range(epc):
         for m in range(itr):
             step += 1
             train_step(image)
             print(".", end='', flush=True)
-        out = st.image(tensor_to_image(image), caption=("Train step: {}".format(step)))
+        imgs.empty()
+        imgs.image(tensor_to_image(image))
 
     end = time.time()
+    imgs.empty()
     st.write("Total time: {:.1f}".format(end-start))
+    return tensor_to_image(image)
 
-    out = st.image(tensor_to_image(image), caption="generated image")
-    
-
-    
 with st.sidebar:
     st.title("Style Transfer")
     st.info("This application is originally developed from Tensorflow's Neural Style Transfer Tutorial")
@@ -239,10 +212,9 @@ with col2:
     style_img = st.file_uploader("Choose a syle image", type=['png', 'jpg', 'jpeg'])
     if style_img:
         st.image(style_img, caption='Style Image')
-
 if content_img and style_img:
-    st.button('Generate!', on_click=generate, args=[content_img, style_img, epc, itr])
-
-
-
+    btn = st.button('Generate!')
+    if btn:
+        out = st.empty()
+        out.image(generate(content_img, style_img, epc, itr), caption="generated image")
 

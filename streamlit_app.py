@@ -128,11 +128,11 @@ def generate(content_img, style_img, epc, itr):
     results = extractor(tf.constant(content_image))
 
     style_targets = extractor(style_image)['style']
-    """
+    '''
     print(style_targets)
     
     style_targets.save("DaVinciTargets.h5", save_format="h5")
-    """
+    '''
     content_targets = extractor(content_image)['content']
 
     image = tf.Variable(content_image)

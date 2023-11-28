@@ -50,10 +50,6 @@ def generate(content_img, style_img, epc, itr):
 
     vgg = tf.keras.applications.VGG19(include_top=False, weights='imagenet')
 
-    print()
-    for layer in vgg.layers:
-        print(layer.name)
-
     content_layers = ['block5_conv2']
 
     style_layers = ['block1_conv1',
@@ -117,11 +113,11 @@ def generate(content_img, style_img, epc, itr):
     results = extractor(tf.constant(content_image))
 
     style_targets = extractor(style_image)['style']
-    '''
-    print(style_targets)
     
-    style_targets.save("DaVinciTargets.h5", save_format="h5")
-    '''
+    #print(style_targets)
+    
+    #style_targets.save("DaVinciTargets.h5", save_format="h5")
+    
     content_targets = extractor(content_image)['content']
 
     image = tf.Variable(content_image)
@@ -179,8 +175,7 @@ def generate(content_img, style_img, epc, itr):
             step += 1
             train_step(image)
             print(".", end='', flush=True)
-            imgs.empty()
-            imgs.image(tensor_to_image(image), caption="Iteration {m} - Epoch {n}")
+            imgs.image(tensor_to_image(image), caption=("Epoch " + str(n) + " - Iteration " + str(m)))
 
     end = time.time()
     imgs.empty()

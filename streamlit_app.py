@@ -87,9 +87,6 @@ def generate(content_img, style_img, epc, itr):
         model = tf.keras.Model([vgg.input], outputs)
         return model
 
-    style_extractor = vgg_layers(style_layers)
-    style_outputs = style_extractor(style_image*255)
-
     def gram_matrix(input_tensor):
         result = tf.linalg.einsum('bijc,bijd->bcd', input_tensor, input_tensor)
         input_shape = tf.shape(input_tensor)
@@ -131,6 +128,11 @@ def generate(content_img, style_img, epc, itr):
     results = extractor(tf.constant(content_image))
 
     style_targets = extractor(style_image)['style']
+    """
+    print(style_targets)
+    
+    style_targets.save("DaVinciTargets.h5", save_format="h5")
+    """
     content_targets = extractor(content_image)['content']
 
     image = tf.Variable(content_image)
@@ -188,8 +190,8 @@ def generate(content_img, style_img, epc, itr):
             step += 1
             train_step(image)
             print(".", end='', flush=True)
-        imgs.empty()
-        imgs.image(tensor_to_image(image))
+            imgs.empty()
+            imgs.image(tensor_to_image(image), caption="Iteration {m} - Epoch {n}")
 
     end = time.time()
     imgs.empty()
@@ -212,6 +214,7 @@ with col2:
     style_img = st.file_uploader("Choose a syle image", type=['png', 'jpg', 'jpeg'])
     if style_img:
         st.image(style_img, caption='Style Image')
+
 if content_img and style_img:
     btn = st.button('Generate!')
     if btn:

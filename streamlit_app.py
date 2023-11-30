@@ -12,6 +12,8 @@ def generate(content_img, style_img, epc, itr):
 
     imgs = st.empty()
     imgs.image(content_img)
+
+    filepath = "styles/"+ style_img +"/"
     
     def tensor_to_image(tensor):
         tensor = tensor*255
@@ -38,7 +40,7 @@ def generate(content_img, style_img, epc, itr):
         return img
 
     content_image = load_img(content_img)
-    style_image = load_img(style_img)
+    #style_image = load_img(style_img)
 
 
     x = tf.keras.applications.vgg19.preprocess_input(content_image*255)
@@ -109,18 +111,27 @@ def generate(content_img, style_img, epc, itr):
             return {'content': content_dict, 'style': style_dict}
 
     extractor = StyleContentModel(style_layers, content_layers)
-
-    results = extractor(tf.constant(content_image))
-
-    style_targets = extractor(style_image)['style']
-    
-    #print(style_targets)
-    
-    #style_targets.save("DaVinciTargets.h5", save_format="h5")
     
     content_targets = extractor(content_image)['content']
 
-    image = tf.Variable(content_image)
+    #style_targets = extractor(style_image)['style']
+
+
+    #for name, tensor in style_targets.items():
+    #    print(name)
+    #    print(tensor)
+    #    tf.saved_model.save(tf.Variable(tensor), 'styles/Monet/' + name)
+    targets = []
+    for layer in style_layers:
+        targets.append(tf.convert_to_tensor(tf.saved_model.load(filepath+layer)))
+    
+
+    style_targets = zip(style_layers, targets)
+        
+        
+
+    #style_targets = tf.saved_model.load('styles/VanGogh')
+
 
     def clip_0_1(image):
         return tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=1.0)
@@ -195,9 +206,10 @@ with col1:
     if content_img:
         st.image(content_img, caption='Content Image')
 with col2:
-    style_img = st.file_uploader("Choose a syle image", type=['png', 'jpg', 'jpeg'])
-    if style_img:
-        st.image(style_img, caption='Style Image')
+    style_img = st.selectbox(
+        'Choose a style to your image',
+        ('VanGogh', 'DaVinci', 'Kadinsky', 'Munch', 'Monet'),
+        index=None)
 
 if content_img and style_img:
     btn = st.button('Generate!')

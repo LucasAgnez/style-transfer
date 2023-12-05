@@ -123,10 +123,14 @@ def generate(content_img, style_img, epc, itr):
     #    tf.saved_model.save(tf.Variable(tensor), 'styles/Monet/' + name)
     targets = []
     for layer in style_layers:
-        targets.append(tf.convert_to_tensor(tf.saved_model.load(filepath+layer)))
+        target = tf.convert_to_tensor(tf.saved_model.load(filepath+layer))
+        targets.append(target)
     
 
-    style_targets = zip(style_layers, targets)
+    style_targets = {style_name: value
+                        for style_name, value
+                        in zip(style_layers, targets)}
+
         
         
 
